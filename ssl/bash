@@ -1,0 +1,13 @@
+#!/bin/bash
+openssl req -x509 \
+    -newkey rsa:2048 \
+    -nodes \
+    -keyout server.key \
+    -out server.crt \
+    -sha256 \
+    -days 365
+    # -subj '/CN=localhost' \
+    # -config certdef.cnf \
+
+sudo cp server.crt /usr/local/share/ca-certificates/
+sudo update-ca-certificates

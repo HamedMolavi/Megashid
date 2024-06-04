@@ -1,0 +1,90 @@
+version: '3.8'
+services:
+  zookeeper:
+    image: 192.168.100.100:5000/confluentinc/cp-zookeeper:latest
+    hostname: zookeeper
+    container_name: zookeeper
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+
+  kafka:
+    image: 192.168.100.100:5000/confluentinc/cp-kafka:latest
+    hostname: kafka
+    container_name: kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://192.168.205.100:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+
+  kafka-ui:
+    container_name: kafka-ui
+    image: 192.168.100.100:5000/provectuslabs/kafka-ui:latest
+    restart: always
+    ports:
+      - 6030:8080
+    depends_on:
+      - zookeeper
+      - kafka
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+
+  mongo:
+    image: mongo:4.4
+    container_name: mongo
+    #environment:
+      #- MONGO_INITDB_ROOT_USERNAME=root
+      #- MONGO_INITDB_ROOT_PASSWORD=example
+    ports:
+      - 27017:27017
+
+  redis:
+    image: redis:6.2-alpine
+    container_name: redis
+    #environment:
+      #- REDIS_REPLICATION_MODE=master
+    ports:
+      - 6379:6379
+
+  mongo-express:
+    image: 192.168.100.100:5000/mongo-express:1.0.2-20-alpine3.19
+    container_name: mongo-express
+    environment:
+      #ME_CONFIG_MONGODB_ADMINUSERNAME: admin
+      #ME_CONFIG_MONGODB_ADMINPASSWORD: admin
+      ME_CONFIG_MONGODB_SERVER: mongo
+      ME_CONFIG_MONGODB_PORT: "27017"
+    ports:
+      - "0.0.0.0:8081:8081"
+    depends_on:
+      - mongo
+
+  influxdb:
+    image: influxdb:2.0
+    container_name: influxdb
+    ports:
+      - 8086:8086
+    volumes:
+      - /tmp/testdata/influx:/var/lib/influxdb2:rw
+
+  telegraf:
+    image: telegraf:1.25-alpine
+    container_name: telegraf
+    depends_on:
+      - influxdb
+    volumes:
+      - /home/hamed/Projects/Megashid/src/db/influx/telegraf.conf:/etc/telegraf/telegraf.conf:ro
+    environment:
+      - TZ=Asia/Tehran
